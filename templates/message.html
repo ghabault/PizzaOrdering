@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% block content %}
+    <h1>Order completed</h1>
+    <h2> Order receipt </h2>
+    <table >
+      <tr><td> <strong>Name:</strong> {{ name }}</td></tr>
+      <tr><td> <strong>Order date:</strong> {{ date }}</td></tr>
+      <tr>
+        <td>
+          <strong>Order type:</strong> {{ type }}
+        </td>
+        <th>
+          {{ delay_msg }}
+        </th>
+      </tr>
+      <tr><td>{{ addr }}</td></tr>
+      <tr><td><strong>Customer phone number:</strong> {{ phone }}</td></tr>
+      {{ bill }}
+    </table>
+
+    <div> Here are some additional information regarding the order: </div>
+    <p>
+        {{ message }}
+    </p>
+    <a href="{{ url_for('home') }}">Start a new order</a>
+{% endblock %}

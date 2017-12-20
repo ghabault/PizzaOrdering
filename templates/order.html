@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1>Pizza menu:</h1>
+<div>
+  <table>{{ menu }}</table>
+</div>
+
+<h1>Customer selection</h1>
+<p> Please separate pizza numbers by a coma.</p>
+<form method="post" action="{{ url_for('message') }}">
+        <p><label>Selection:</label> <input type="text" name="customer_selection" required></p>
+        <p><button type="submit">Send</button><input type="reset"></p>
+</form>
+{% endblock %}

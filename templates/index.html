@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+{% block content %}
+    <h1>KEIO - Pizza Ordering System</h1>
+    <p> Fill in <strong>Customer</strong> information:</p>
+    <form method="post" action="{{ url_for('signup') }}">
+        <p><label>Name:</label> <input type="text" name="customer_name" required></p>
+        <p><label>Phone number:</label> <input type="tel" name="customer_phone" required></p>
+        <p><label>Address (delivery, if any):</label> <input type="text" name="delivery_addr"></p>
+
+        <p><label>Number of Pizza to order:</label> <input type="number" name="nb_pizza" min="1" max="5" required></p>
+        <p><label>Additional Message:</label> <textarea name="message"></textarea></p>
+        <p><button type="submit">Send</button><input type="reset"></p>
+    </form>
+{% endblock %}

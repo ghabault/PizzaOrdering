@@ -1,0 +1,9 @@
+beautifulsoup4==4.4.1
+Flask==0.12.2
+gunicorn==19.7.1
+Jinja2==2.10
+Markdown==2.6.9
+MarkupSafe==1.0
+pipenv==8.3.2
+requests==2.18.4
+
