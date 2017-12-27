@@ -7,6 +7,12 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'F34TF$($e34D';
 
 # CONFIG
+DMS_URL = "https://automatic-vehicle.herokuapp.com/"
+# Shop information
+SHOP_NAME = "Pizza'Bunga"
+SHOP_ADDRESS = "4-31-8 Kizuki, Nakahara-ku, Kawazaki-shi, Kanagawa-ken 221-0025"
+SHOP_PHONE = "080-4627-6196"
+
 # cooking delay
 COOKING_DELAY = 5
 
@@ -36,16 +42,19 @@ PIZZAS_AVAILABLE = (
 def get_delay(delivery_addr):
     """Send the customer information to the Delivery Management System, and receive delay"""
     delivery_delay = 0
-    webpath = "https://automatic-vehicle.herokuapp.com/order_management.php?origin=Hiyoshi"
-    #webpath += shopaddr
+    webpath = DMS_URL + "order_management.php?origin="
+    webpath += SHOP_ADDRESS
     webpath += "&destination="
     webpath += delivery_addr
     #print webpath
     websource = requests.get(webpath, auth=('yamanaka', 'yamanaka'))
+    #payload = make_get_json(SHOP_ADDRESS, delivery_addr)
+    #websource = requests.post(webpath, json=payload, auth=('yamanaka', 'yamanaka'))
     #print websource.text
     data = str(websource.text)
     #delivery_delay = filter(str.isdigit, data)
     delivery_delay = re.findall('\d+', data)
+    #print delivery_delay
     return int(delivery_delay[0])
 
 def compute_delay(order):
@@ -59,6 +68,13 @@ def compute_delay(order):
         delay += order.delay
     order.total_delay = delay
 
+def send_order(order):
+    webpath = DMS_URL + "order_management.php"
+    payload = get_json_payload(order.name, order.phone, order.address,
+        order.message, order.id, order.pizza)
+    websource = requests.post(webpath, json=payload, auth=('yamanaka', 'yamanaka'))
+    return websource.status_code
+
 def compute_cost(order):
     cost = sum(
         pizza["price"]*pizza["amount"]
@@ -66,6 +82,31 @@ def compute_cost(order):
     if not order.pickup:
         cost += DELIVERY_CHARGE
     order.cost = cost
+
+def make_get_json(origin_address, destination_address):
+    data = {"route":{"origin":origin_address, "destination":destination_address}}
+    return data
+
+def make_cinfo_json(customer_name, customer_phone, customer_address, customer_message):
+    data = {"name":customer_name,"phone":customer_phone,
+        "address":customer_address, "message":customer_message}
+    return data
+
+def make_sinfo_json(shop_name, shop_phone, shop_address):
+    data = {"name":shop_name,"phone":shop_phone,"address":shop_address}
+    return data
+
+def make_order_json(order_id, order_list):
+    data = {"id":order_id,"object":order_list}
+    return data
+
+def get_json_payload(customer_name, customer_phone, customer_address,
+    customer_message, order_id, order_list):
+    sinfo = make_sinfo_json(SHOP_NAME, SHOP_PHONE, SHOP_ADDRESS)
+    cinfo = make_cinfo_json(customer_name, customer_phone, customer_address, customer_message)
+    oinfo = make_order_json(order_id, order_list)
+    data = {"information":{"shop":sinfo, "customer":cinfo, "order":oinfo}}
+    return data
 
 def format_table_row(l_num, l_sym, l_text, c_num, c_sym, c_text, r_num, r_sym, r_text):
     row = """
@@ -83,10 +124,11 @@ class Order():
     """Holds each order's information, can get the information itself."""
     def __init__(self):
         self.ID = 0
-        self.name = ""
         self.pickup = False
+        self.name = ""
         self.address = None
         self.phone = None
+        self.message = ""
         self.pizzas = []
         self.cost = 0
         self.date = None
@@ -153,6 +195,7 @@ def message():
         order.pickup = True
     order.address = session['delivery_addr']
     order.phone = session['customer_phone']
+    order.message = session['message']
     pizza_list = session['customer_selection'].strip().split(",")
     # print pizza_list
     order.set_pizzas(int(session['nb_pizza']), pizza_list)
@@ -188,6 +231,12 @@ def message():
                                                phone=session['customer_phone'],
                                                message=session['message'])
     else:
+        #
+        #response_code = send_order(order)
+        #if(response_code == 200)
+        #   print the receipt
+        #else
+        #   print an error message
         delay_msg = "Delivered in: {:3} min (approx.)".format(order.total_delay)
         addr_msg = "Delivery address: " + session['delivery_addr']
         return render_template('message.html', name=order.name,
