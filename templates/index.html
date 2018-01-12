@@ -1,14 +1,29 @@
 {% extends "layout.html" %}
 {% block content %}
-    <h1>KEIO - Pizza Ordering System</h1>
-    <p> Fill in <strong>Customer</strong> information:</p>
-    <form method="post" action="{{ url_for('signup') }}">
-        <p><label>Name:</label> <input type="text" name="customer_name" required></p>
-        <p><label>Phone number:</label> <input type="tel" name="customer_phone" required></p>
-        <p><label>Address (delivery, if any):</label> <input type="text" name="delivery_addr"></p>
 
-        <p><label>Number of Pizza to order:</label> <input type="number" name="nb_pizza" min="1" max="5" required></p>
-        <p><label>Additional Message:</label> <textarea name="message"></textarea></p>
-        <p><button type="submit">Send</button><input type="reset"></p>
-    </form>
+    <div class="row">
+      <div class="column left">
+        <img src="https://drive.google.com/uc?id=1I5jVGRkTIcLvSYFQousXppv4L5TiJcIh" alt="logo" width=250 align="left">
+      </div>
+      <div class="column right">
+        <h1>KEIO</h1>
+        <h1>Pizza Ordering System</h1>
+      </div>
+    </div>
+    <div class="row">
+      <div class="column left">
+        <img src="https://drive.google.com/uc?id=1exnoGVLcUWOhjL1nbgH1k8Yw25VU2lgj" alt="step" width=100 align="middle">
+      </div>
+      <div class="column right">
+        <p> Fill in <strong>Customer</strong> information:</p>
+        <form method="post" action="{{ url_for('signup') }}">
+            <p><label>Name:</label> <input type="text" name="customer_name" required></p>
+            <p><label>Phone number:</label> <input type="tel" name="customer_phone" required></p>
+            <p><label>Address (delivery, if any):</label> <input type="text" name="delivery_addr"></p>
+            <p><label>Number of Pizza to order:</label> <input type="number" name="nb_pizza" min="1" max="5" required></p>
+            <p><label>Additional Message:</label> <textarea name="message"></textarea></p>
+            <p><button type="submit">Send</button><input type="reset"></p>
+        </form>
+      </div>
+    </div>
 {% endblock %}

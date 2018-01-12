@@ -1,7 +1,19 @@
 {% extends "layout.html" %}
 {% block content %}
+<div class="row">
+  <div class="column left">
+    <img src="https://drive.google.com/uc?id=1I5jVGRkTIcLvSYFQousXppv4L5TiJcIh" alt="logo" width=250 align="left">
+  </div>
+  <div class="column right">
     <h1>Order completed</h1>
-    <h2> Order receipt </h2>
+  </div>
+</div>
+<div class="row">
+  <div class="column left">
+    <img src="https://drive.google.com/uc?id=1FkJkCS0RUEwZe04cP8tdNJSh8QS9jnBh" alt="step" width=100 align="middle">
+  </div>
+  <div class="column right">
+    <h3> Order receipt </h3>
     <table >
       <tr><td> <strong>Name:</strong> {{ name }}</td></tr>
       <tr><td> <strong>Order date:</strong> {{ date }}</td></tr>
@@ -17,10 +29,13 @@
       <tr><td><strong>Customer phone number:</strong> {{ phone }}</td></tr>
       {{ bill }}
     </table>
+  </div>
+</div>
 
-    <div> Here are some additional information regarding the order: </div>
-    <p>
-        {{ message }}
-    </p>
-    <a href="{{ url_for('home') }}">Start a new order</a>
+<div> Here are some additional information regarding the order: </div>
+<p>
+    {{ message }}
+</p>
+
+<a href="{{ url_for('home') }}">Start a new order</a>
 {% endblock %}

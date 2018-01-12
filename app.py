@@ -1,6 +1,7 @@
 import time
 import re
 import requests
+import json
 from flask import Flask, render_template, request, redirect, url_for, abort, session, Markup
 
 app = Flask(__name__)
@@ -8,9 +9,10 @@ app.config['SECRET_KEY'] = 'F34TF$($e34D';
 
 # CONFIG
 DMS_URL = "https://automatic-vehicle.herokuapp.com/"
+ORDER_KEY = "order_management.php"
 # Shop information
 SHOP_NAME = "Pizza'Bunga"
-SHOP_ADDRESS = "4-31-8 Kizuki, Nakahara-ku, Kawazaki-shi, Kanagawa-ken 221-0025"
+SHOP_ADDRESS = "4-31-8 Kizuki, Nakahara-ku, Kawazaki-shi, Kanagawa-ken 211-0025"
 SHOP_PHONE = "080-4627-6196"
 
 # cooking delay
@@ -42,20 +44,33 @@ PIZZAS_AVAILABLE = (
 def get_delay(delivery_addr):
     """Send the customer information to the Delivery Management System, and receive delay"""
     delivery_delay = 0
-    webpath = DMS_URL + "order_management.php?origin="
-    webpath += SHOP_ADDRESS
-    webpath += "&destination="
-    webpath += delivery_addr
-    #print webpath
-    websource = requests.get(webpath, auth=('yamanaka', 'yamanaka'))
-    #payload = make_get_json(SHOP_ADDRESS, delivery_addr)
-    #websource = requests.post(webpath, json=payload, auth=('yamanaka', 'yamanaka'))
-    #print websource.text
-    data = str(websource.text)
-    #delivery_delay = filter(str.isdigit, data)
-    delivery_delay = re.findall('\d+', data)
-    #print delivery_delay
-    return int(delivery_delay[0])
+    order_id = 0
+    webpath = DMS_URL + ORDER_KEY
+
+    payload = make_getcmd_json(SHOP_ADDRESS, delivery_addr)
+    print payload
+    websource = requests.get(webpath, json=payload, auth=('yamanaka', 'yamanaka'))
+    try:
+        response = json.loads(websource.text)
+        #print json.dumps(response, sort_keys=True, indent=4, separators=(',', ': '))
+        delay = response['duration']
+        oid = response['order_id']
+        if delay is None:
+            print "Not receiving delay information"
+            print "Request = " + payload
+            print "Response = " + websource.text
+            print delay, oid
+            return 0, oid
+        else:
+            delivery_delay = re.findall('\d+', str(delay))
+            print delay, oid
+            return int(delivery_delay[0]), oid
+    except(ValueError, KeyError, TypeError):
+        print "JSON format error"
+        print websource.text
+        return 0, 0
+
+
 
 def compute_delay(order):
     """Compute the preparation (along with delivery, if any) delay"""
@@ -69,9 +84,10 @@ def compute_delay(order):
     order.total_delay = delay
 
 def send_order(order):
-    webpath = DMS_URL + "order_management.php"
+    webpath = DMS_URL + ORDER_KEY
     payload = get_json_payload(order.name, order.phone, order.address,
-        order.message, order.id, order.pizza)
+        order.message, order.ID, order.pizzas)
+    print json.dumps(payload, sort_keys=True, indent=4, separators=(',', ': '))
     websource = requests.post(webpath, json=payload, auth=('yamanaka', 'yamanaka'))
     return websource.status_code
 
@@ -83,8 +99,8 @@ def compute_cost(order):
         cost += DELIVERY_CHARGE
     order.cost = cost
 
-def make_get_json(origin_address, destination_address):
-    data = {"route":{"origin":origin_address, "destination":destination_address}}
+def make_getcmd_json(origin_address, destination_address):
+    data = {"information":{"origin":origin_address, "destination":destination_address}}
     return data
 
 def make_cinfo_json(customer_name, customer_phone, customer_address, customer_message):
@@ -164,7 +180,7 @@ def signup():
     session['nb_pizza'] = request.form['nb_pizza']
     session['message'] = request.form['message']
     if session['delivery_addr']:
-        session['delivery_delay'] = get_delay(session['delivery_addr'])
+        session['delivery_delay'], session['order_id'] = get_delay(session['delivery_addr'])
         #print session['delivery_delay']
     return redirect(url_for('order_page'))
 
@@ -187,6 +203,7 @@ def message():
     if not 'customer_name' in session:
         return abort(403)
     order = Order()
+    order.ID = session['order_id']
     order.name = session['customer_name']
     if session['delivery_addr']:
         order.pickup = False
@@ -202,7 +219,6 @@ def message():
     compute_cost(order)
     compute_delay(order)
     order.date = time.strftime("%c")
-    # orders.append(order)
 
     bill = """
     """
@@ -232,21 +248,25 @@ def message():
                                                message=session['message'])
     else:
         #
-        #response_code = send_order(order)
-        #if(response_code == 200)
-        #   print the receipt
-        #else
-        #   print an error message
-        delay_msg = "Delivered in: {:3} min (approx.)".format(order.total_delay)
-        addr_msg = "Delivery address: " + session['delivery_addr']
-        return render_template('message.html', name=order.name,
-                                               date=order.date,
-                                               type="Delivery",
-                                               delay_msg=delay_msg,
-                                               addr=addr_msg,
-                                               bill=bill,
-                                               phone=session['customer_phone'],
-                                               message=session['message'])
+        response_code = send_order(order)
+        print response_code
+        if(response_code == 200):
+            if order.delay == 0:
+                delay_msg = "Delivered in: Unknown"
+            else:
+                delay_msg = "Delivered in: {:3} min (approx.)".format(order.total_delay)
+            addr_msg = "Delivery address: " + session['delivery_addr']
+            return render_template('message.html', name=order.name,
+                                                  date=order.date,
+                                                  type="Delivery",
+                                                  delay_msg=delay_msg,
+                                                  addr=addr_msg,
+                                                  bill=bill,
+                                                  phone=session['customer_phone'],
+                                                  message=session['message'])
+        else:
+           print "We have not been able to contact the delivery system."
+
 
 
 if __name__ == '__main__':
@@ -254,7 +274,5 @@ if __name__ == '__main__':
         PIZZAS_AVAILABLE,
         key=lambda k: (k["price"], k["name"]))
 
-    orders = []
-    completed_orders = []
 
     app.run()
