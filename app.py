@@ -48,7 +48,7 @@ def get_delay(delivery_addr):
     webpath = DMS_URL + ORDER_KEY
 
     payload = make_getcmd_json(SHOP_ADDRESS, delivery_addr)
-    print payload
+    #print payload
     websource = requests.get(webpath, json=payload, auth=('yamanaka', 'yamanaka'))
     try:
         response = json.loads(websource.text)
@@ -57,8 +57,8 @@ def get_delay(delivery_addr):
         oid = response['order_id']
         if delay is None:
             print "Not receiving delay information"
-            print "Request = " + payload
-            print "Response = " + websource.text
+            print "Request = " + str(payload)
+            print "Response = " + str(websource.text)
             print delay, oid
             return 0, oid
         else:
@@ -67,7 +67,7 @@ def get_delay(delivery_addr):
             return int(delivery_delay[0]), oid
     except(ValueError, KeyError, TypeError):
         print "JSON format error"
-        print websource.text
+        print str(websource.text)
         return 0, 0
 
 
@@ -87,7 +87,7 @@ def send_order(order):
     webpath = DMS_URL + ORDER_KEY
     payload = get_json_payload(order.name, order.phone, order.address,
         order.message, order.ID, order.pizzas)
-    print json.dumps(payload, sort_keys=True, indent=4, separators=(',', ': '))
+    print str(json.dumps(payload, sort_keys=True, indent=4, separators=(',', ': ')))
     websource = requests.post(webpath, json=payload, auth=('yamanaka', 'yamanaka'))
     return websource.status_code
 
