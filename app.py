@@ -56,18 +56,18 @@ def get_delay(delivery_addr):
         delay = response['duration']
         oid = response['order_id']
         if delay is None:
-            print "Not receiving delay information"
-            print "Request = " + str(payload)
-            print "Response = " + str(websource.text)
-            print delay, oid
+            #print "Not receiving delay information"
+            #print "Request = " + str(payload)
+            #print "Response = " + str(websource.text)
+            #print delay, oid
             return 0, oid
         else:
             delivery_delay = re.findall('\d+', str(delay))
-            print delay, oid
+            #print delay, oid
             return int(delivery_delay[0]), oid
     except(ValueError, KeyError, TypeError):
-        print "JSON format error"
-        print str(websource.text)
+        #print "JSON format error"
+        #print str(websource.text)
         return 0, 0
 
 
@@ -87,7 +87,7 @@ def send_order(order):
     webpath = DMS_URL + ORDER_KEY
     payload = get_json_payload(order.name, order.phone, order.address,
         order.message, order.ID, order.pizzas)
-    print str(json.dumps(payload, sort_keys=True, indent=4, separators=(',', ': ')))
+    #print str(json.dumps(payload, sort_keys=True, indent=4, separators=(',', ': ')))
     websource = requests.post(webpath, json=payload, auth=('yamanaka', 'yamanaka'))
     return websource.status_code
 
@@ -249,7 +249,7 @@ def message():
     else:
         #
         response_code = send_order(order)
-        print response_code
+        #print response_code
         if(response_code == 200):
             if order.delay == 0:
                 delay_msg = "Delivered in: Unknown"
@@ -265,7 +265,7 @@ def message():
                                                   phone=session['customer_phone'],
                                                   message=session['message'])
         else:
-           print "We have not been able to contact the delivery system."
+           #print "We have not been able to contact the delivery system."
 
 
 
