@@ -11,8 +11,8 @@
       </div>
     </div>
     <div class="row">
-      <div class="column left">
-        <img src="https://drive.google.com/uc?id=1exnoGVLcUWOhjL1nbgH1k8Yw25VU2lgj" alt="step" width=100 align="middle">
+      <div class="column image">
+        <img src="https://drive.google.com/uc?id=1exnoGVLcUWOhjL1nbgH1k8Yw25VU2lgj" alt="step" width=120 align="middle">
       </div>
       <div class="column right">
         <p> Fill in <strong>Customer</strong> information:</p>
@@ -22,6 +22,7 @@
             <p><label>Address (delivery, if any):</label> <input type="text" name="delivery_addr"></p>
             <p><label>Number of Pizza to order:</label> <input type="number" name="nb_pizza" min="1" max="5" required></p>
             <p><label>Delivery date (if not today):</label> <input type="datetime-local" name="delivery_date" placeholder="{{ now }}"></p>
+            <p><label>Would you agree to share delivery (slight delay may occur):</label> <input type="checkbox" name="sharing_status" value="sharing"></p>
             <p><label>Additional Message:</label> <textarea name="message"></textarea></p>
             <p><button type="submit">Send</button><input type="reset"></p>
         </form>

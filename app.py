@@ -25,8 +25,8 @@ MAX_PIZZAS = 5
 
 # delivery charge in $
 DELIVERY_CHARGE = 3.00
-# delivery delay in minutes
-DELIVERY_DELAY = 10
+# Maximum time that pizzas can wait after being prepared before delivered in minutes
+MAX_KEEP_PIZZAS = 10
 
 PIZZAS_AVAILABLE = (
     {"name": "Hawaiian",             "price": 8.5,  "time": 2},
@@ -72,24 +72,27 @@ def get_delay(delivery_addr):
         #print str(websource.text)
         return 0, 0
 
-
+def compute_preparation_delay(goods_list):
+    delay = 0
+    for pizza in goods_list:
+        if delay < pizza["time"]:
+            delay = pizza["time"]
+    delay += COOKING_DELAY
+    return delay
 
 def compute_delay(order):
     """Compute the preparation (along with delivery, if any) delay"""
     delay = 0
-    for pizza in order.pizzas:
-        if delay < pizza["time"]:
-            delay = pizza["time"]
-    delay += COOKING_DELAY
+    delay += order.preparation_time
     if not order.pickup:
         delay += order.delay
-    order.total_delay = delay
+    return delay
 
 def send_order(order):
     webpath = DMS_URL + ORDER_KEY
-    payload = get_json_payload(order.name, order.phone, order.delivery_address,
-        order.message, order.ID, order.pizzas)
-    #print str(json.dumps(payload, sort_keys=True, indent=4, separators=(',', ': ')))
+    payload = get_json_payload(order)
+
+    print str(json.dumps(payload, sort_keys=True, indent=4, separators=(',', ': ')))
     websource = requests.post(webpath, json=payload, auth=('yamanaka', 'yamanaka'))
     return websource.status_code
 
@@ -99,31 +102,38 @@ def compute_cost(order):
         for pizza in order.pizzas)
     if not order.pickup:
         cost += DELIVERY_CHARGE
-    order.cost = cost
+    return cost
 
 def make_getcmd_json(origin_address, destination_address):
     data = {"information":{"origin":origin_address, "destination":destination_address}}
     return data
 
-def make_cinfo_json(customer_name, customer_phone, customer_address, customer_message):
+def make_dinfo_json(customer_name, customer_phone, customer_address, customer_message, delivery_date, sharing_status):
     data = {"name":customer_name,"phone":customer_phone,
-        "address":customer_address, "message":customer_message}
+        "address":customer_address, "message":customer_message,
+        "date":delivery_date, "dFormat":TS_FORMAT, "sharing":sharing_status}
     return data
 
 def make_sinfo_json(shop_name, shop_phone, shop_address):
     data = {"name":shop_name,"phone":shop_phone,"address":shop_address}
     return data
 
-def make_order_json(order_id, order_list):
-    data = {"id":order_id,"object":order_list}
+def make_order_json(order_id, order_date, order_preparation, order_max_keep, order_list):
+    data = {"id":order_id, "date":order_date, "dFormat":TS_FORMAT,
+        "preparation":order_preparation, "pUnit":"min",
+        "keeptime": order_max_keep, "kUnit":"min", "list":order_list, "lType":"pizza"}
     return data
 
-def get_json_payload(customer_name, customer_phone, customer_address,
-    customer_message, order_id, order_list):
+def get_json_payload(order):
     sinfo = make_sinfo_json(SHOP_NAME, SHOP_PHONE, SHOP_ADDRESS)
-    cinfo = make_cinfo_json(customer_name, customer_phone, customer_address, customer_message)
-    oinfo = make_order_json(order_id, order_list)
-    data = {"information":{"shop":sinfo, "customer":cinfo, "order":oinfo}}
+    if order.now:
+        dinfo = make_dinfo_json(order.name, order.phone, order.delivery_address,
+            order.message, "", order.sharing_status)
+    else:
+        dinfo = make_dinfo_json(order.name, order.phone, order.delivery_address,
+            order.message, order.delivery_date.strftime(TS_FORMAT), order.sharing_status)
+    oinfo = make_order_json(order.ID, order.date.strftime(TS_FORMAT), order.preparation_time, order.max_keep_time, order.pizzas)
+    data = {"information":{"shop":sinfo, "delivery":dinfo, "order":oinfo}}
     return data
 
 def format_table_row(l_num, l_sym, l_text, c_num, c_sym, c_text, r_num, r_sym, r_text):
@@ -141,20 +151,26 @@ def format_table_row(l_num, l_sym, l_text, c_num, c_sym, c_text, r_num, r_sym, r
 class Order():
     """Holds each order's information, can get the information itself."""
     def __init__(self):
+        # Order information
         self.ID = 0
-        self.pickup = False
-        self.case = 0
+        self.date = None
+        self.now = True
+        self.total_delay = 0
+        self.cost = 0
+        # Delivery information
         self.name = ""
         self.delivery_address = None
         self.phone = None
         self.message = ""
-        self.pizzas = []
-        self.cost = 0
-        self.date = None
         self.delivery_date = None
         self.delay = 0
-        self.total_delay = 0
+        self.sharing_status = False
+        self.pickup = False
         self.isDelivered = False
+        # Goods information
+        self.pizzas = []
+        self.preparation_time = 0
+        self.max_keep_time = 0
 
     def set_pizzas(self, number_pizzas, pizza_list):
         for i in range(number_pizzas):
@@ -182,6 +198,7 @@ def signup():
     session['customer_phone'] = request.form['customer_phone']
     session['delivery_addr'] = request.form['delivery_addr']
     session['delivery_date'] = request.form['delivery_date']
+    session['sharing_status'] = request.form.get("sharing_status")
     session['nb_pizza'] = request.form['nb_pizza']
     session['message'] = request.form['message']
     if session['delivery_addr']:
@@ -212,19 +229,24 @@ def message():
     order.name = session['customer_name']
     if session['delivery_addr']:
         order.pickup = False
+        order.delivery_address = session['delivery_addr']
         order.delay = session['delivery_delay']
     else:
         order.pickup = True
     if session['delivery_date']:
         order.delivery_date = datetime.strptime(session['delivery_date'], TS_FORMAT)
-    order.delivery_address = session['delivery_addr']
+        order.now = False
+    if session['sharing_status']:
+        order.sharing_status = True
     order.phone = session['customer_phone']
     order.message = session['message']
     pizza_list = session['customer_selection'].strip().split(",")
     # print pizza_list
     order.set_pizzas(int(session['nb_pizza']), pizza_list)
-    compute_cost(order)
-    compute_delay(order)
+    order.cost = compute_cost(order)
+    order.preparation_time = compute_preparation_delay(order.pizzas)
+    order.max_keep_time = MAX_KEEP_PIZZAS
+    order.total_delay = compute_delay(order)
     order.date = datetime.now()
 
     bill = """
@@ -303,8 +325,7 @@ def message():
                                                       phone=session['customer_phone'],
                                                       message=session['message'])
             else:
-                pass
-               #print "We have not been able to contact the delivery system."
+                print "We have not been able to contact the delivery system."
 
 
 
