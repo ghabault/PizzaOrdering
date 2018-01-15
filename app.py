@@ -92,7 +92,7 @@ def send_order(order):
     webpath = DMS_URL + ORDER_KEY
     payload = get_json_payload(order)
 
-    print str(json.dumps(payload, sort_keys=True, indent=4, separators=(',', ': ')))
+    #print str(json.dumps(payload, sort_keys=True, indent=4, separators=(',', ': ')))
     websource = requests.post(webpath, json=payload, auth=('yamanaka', 'yamanaka'))
     return websource.status_code
 
@@ -325,7 +325,8 @@ def message():
                                                       phone=session['customer_phone'],
                                                       message=session['message'])
             else:
-                print "We have not been able to contact the delivery system."
+                pass
+                #print "We have not been able to contact the delivery system."
 
 
 
