@@ -265,6 +265,7 @@ def message():
                                                   phone=session['customer_phone'],
                                                   message=session['message'])
         else:
+            pass
            #print "We have not been able to contact the delivery system."
 
 
