@@ -1,4 +1,4 @@
-import time
+from datetime import datetime, timedelta
 import re
 import requests
 import json
@@ -10,6 +10,8 @@ app.config['SECRET_KEY'] = 'F34TF$($e34D';
 # CONFIG
 DMS_URL = "https://automatic-vehicle.herokuapp.com/"
 ORDER_KEY = "order_management.php"
+TS_FORMAT = "%Y-%m-%d %H:%M"
+
 # Shop information
 SHOP_NAME = "Pizza'Bunga"
 SHOP_ADDRESS = "4-31-8 Kizuki, Nakahara-ku, Kawazaki-shi, Kanagawa-ken 211-0025"
@@ -85,7 +87,7 @@ def compute_delay(order):
 
 def send_order(order):
     webpath = DMS_URL + ORDER_KEY
-    payload = get_json_payload(order.name, order.phone, order.address,
+    payload = get_json_payload(order.name, order.phone, order.delivery_address,
         order.message, order.ID, order.pizzas)
     #print str(json.dumps(payload, sort_keys=True, indent=4, separators=(',', ': ')))
     websource = requests.post(webpath, json=payload, auth=('yamanaka', 'yamanaka'))
@@ -141,13 +143,15 @@ class Order():
     def __init__(self):
         self.ID = 0
         self.pickup = False
+        self.case = 0
         self.name = ""
-        self.address = None
+        self.delivery_address = None
         self.phone = None
         self.message = ""
         self.pizzas = []
         self.cost = 0
         self.date = None
+        self.delivery_date = None
         self.delay = 0
         self.total_delay = 0
         self.isDelivered = False
@@ -170,13 +174,14 @@ class Order():
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return render_template('index.html', now=str(datetime.now().strftime(TS_FORMAT)))
 
 @app.route('/signup', methods=['POST'])
 def signup():
     session['customer_name'] = request.form['customer_name']
     session['customer_phone'] = request.form['customer_phone']
     session['delivery_addr'] = request.form['delivery_addr']
+    session['delivery_date'] = request.form['delivery_date']
     session['nb_pizza'] = request.form['nb_pizza']
     session['message'] = request.form['message']
     if session['delivery_addr']:
@@ -210,7 +215,9 @@ def message():
         order.delay = session['delivery_delay']
     else:
         order.pickup = True
-    order.address = session['delivery_addr']
+    if session['delivery_date']:
+        order.delivery_date = datetime.strptime(session['delivery_date'], TS_FORMAT)
+    order.delivery_address = session['delivery_addr']
     order.phone = session['customer_phone']
     order.message = session['message']
     pizza_list = session['customer_selection'].strip().split(",")
@@ -218,7 +225,7 @@ def message():
     order.set_pizzas(int(session['nb_pizza']), pizza_list)
     compute_cost(order)
     compute_delay(order)
-    order.date = time.strftime("%c")
+    order.date = datetime.now()
 
     bill = """
     """
@@ -237,36 +244,69 @@ def message():
 
     bill = Markup(bill)
 
-    if order.pickup:
-        delay_msg = "Ready in: {:3} min (approx.)".format(order.total_delay)
-        return render_template('message.html', name=order.name,
-                                               date=order.date,
-                                               type="Pickup",
-                                               delay_msg=delay_msg,
-                                               bill=bill,
-                                               phone=session['customer_phone'],
-                                               message=session['message'])
-    else:
-        #
-        response_code = send_order(order)
-        #print response_code
-        if(response_code == 200):
-            if order.delay == 0:
-                delay_msg = "Delivered in: Unknown"
-            else:
-                delay_msg = "Delivered in: {:3} min (approx.)".format(order.total_delay)
-            addr_msg = "Delivery address: " + session['delivery_addr']
+    if order.delivery_date is not None:
+        final_date = order.delivery_date + timedelta(minutes = int(order.total_delay))
+        if order.pickup:
+            delay_msg = "Will be ready on: {:3} min (approx.)".format(final_date.strftime(TS_FORMAT))
             return render_template('message.html', name=order.name,
-                                                  date=order.date,
-                                                  type="Delivery",
-                                                  delay_msg=delay_msg,
-                                                  addr=addr_msg,
-                                                  bill=bill,
-                                                  phone=session['customer_phone'],
-                                                  message=session['message'])
+                                                   date=order.date.strftime(TS_FORMAT),
+                                                   type="Pickup",
+                                                   delay_msg=delay_msg,
+                                                   bill=bill,
+                                                   phone=session['customer_phone'],
+                                                   message=session['message'])
         else:
-            pass
-           #print "We have not been able to contact the delivery system."
+            response_code = send_order(order)
+            if(response_code == 200):
+
+                if order.delay == 0:
+                    delay_msg = "Delivered on: Unknown"
+                else:
+                    delay_msg = "Delivered on: {:3} min (approx.)".format(final_date.strftime(TS_FORMAT))
+                addr_msg = "Delivery address: " + session['delivery_addr']
+                return render_template('message.html', name=order.name,
+                                                      date=order.date.strftime(TS_FORMAT),
+                                                      type="Delivery",
+                                                      delay_msg=delay_msg,
+                                                      addr=addr_msg,
+                                                      bill=bill,
+                                                      phone=session['customer_phone'],
+                                                      message=session['message'])
+            else:
+                pass
+               #print "We have not been able to contact the delivery system."
+    else:
+        if order.pickup:
+            delay_msg = "Ready in: {:3} min (approx.)".format(order.total_delay)
+            return render_template('message.html', name=order.name,
+                                                   date=order.date.strftime(TS_FORMAT),
+                                                   type="Pickup",
+                                                   delay_msg=delay_msg,
+                                                   bill=bill,
+                                                   phone=session['customer_phone'],
+                                                   message=session['message'])
+        else:
+            response_code = send_order(order)
+            #print response_code
+            if(response_code == 200):
+                if order.delay == 0:
+                    delay_msg = "Delivered in: Unknown"
+                else:
+                    delay_msg = "Delivered in: {:3} min (approx.)".format(order.total_delay)
+                addr_msg = "Delivery address: " + session['delivery_addr']
+                return render_template('message.html', name=order.name,
+                                                      date=order.date,
+                                                      type="Delivery",
+                                                      delay_msg=delay_msg,
+                                                      addr=addr_msg,
+                                                      bill=bill,
+                                                      phone=session['customer_phone'],
+                                                      message=session['message'])
+            else:
+                pass
+               #print "We have not been able to contact the delivery system."
+
+
 
 
 

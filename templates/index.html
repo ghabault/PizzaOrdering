@@ -3,7 +3,7 @@
 
     <div class="row">
       <div class="column left">
-        <img src="https://drive.google.com/uc?id=1I5jVGRkTIcLvSYFQousXppv4L5TiJcIh" alt="logo" width=250 align="left">
+        <img src="https://drive.google.com/uc?id=1I5jVGRkTIcLvSYFQousXppv4L5TiJcIh" alt="logo" width=200 align="left">
       </div>
       <div class="column right">
         <h1>KEIO</h1>
@@ -21,6 +21,7 @@
             <p><label>Phone number:</label> <input type="tel" name="customer_phone" required></p>
             <p><label>Address (delivery, if any):</label> <input type="text" name="delivery_addr"></p>
             <p><label>Number of Pizza to order:</label> <input type="number" name="nb_pizza" min="1" max="5" required></p>
+            <p><label>Delivery date (if not today):</label> <input type="datetime-local" name="delivery_date" placeholder="{{ now }}"></p>
             <p><label>Additional Message:</label> <textarea name="message"></textarea></p>
             <p><button type="submit">Send</button><input type="reset"></p>
         </form>
