@@ -10,7 +10,7 @@ app.config['SECRET_KEY'] = 'F34TF$($e34D';
 # CONFIG
 DMS_URL = "https://automatic-vehicle.herokuapp.com/"
 ORDER_KEY = "order_management.php"
-TS_FORMAT = "%Y-%m-%d %H:%M"
+TS_FORMAT = "%Y-%m-%dT%H:%M"
 
 # Shop information
 SHOP_NAME = "Pizza'Bunga"
