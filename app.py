@@ -108,10 +108,10 @@ def make_getcmd_json(origin_address, destination_address):
     data = {"information":{"origin":origin_address, "destination":destination_address}}
     return data
 
-def make_dinfo_json(customer_name, customer_phone, customer_address, customer_message, delivery_date, sharing_status):
+def make_dinfo_json(customer_name, customer_phone, customer_address, customer_message, delivery_date, sharing_span):
     data = {"name":customer_name,"phone":customer_phone,
         "address":customer_address, "message":customer_message,
-        "date":delivery_date, "dFormat":TS_FORMAT, "sharing":sharing_status}
+        "date":delivery_date, "dFormat":TS_FORMAT, "sharing":sharing_span}
     return data
 
 def make_sinfo_json(shop_name, shop_phone, shop_address):
@@ -128,10 +128,10 @@ def get_json_payload(order):
     sinfo = make_sinfo_json(SHOP_NAME, SHOP_PHONE, SHOP_ADDRESS)
     if order.now:
         dinfo = make_dinfo_json(order.name, order.phone, order.delivery_address,
-            order.message, "", order.sharing_status)
+            order.message, "", order.sharing_span)
     else:
         dinfo = make_dinfo_json(order.name, order.phone, order.delivery_address,
-            order.message, order.delivery_date.strftime(TS_FORMAT), order.sharing_status)
+            order.message, order.delivery_date.strftime(TS_FORMAT), order.sharing_span)
     oinfo = make_order_json(order.ID, order.date.strftime(TS_FORMAT), order.preparation_time, order.max_keep_time, order.pizzas)
     data = {"information":{"shop":sinfo, "delivery":dinfo, "order":oinfo}}
     return data
@@ -164,7 +164,7 @@ class Order():
         self.message = ""
         self.delivery_date = None
         self.delay = 0
-        self.sharing_status = False
+        self.sharing_span = 0 # 0 = no sharing
         self.pickup = False
         self.isDelivered = False
         # Goods information
@@ -198,7 +198,7 @@ def signup():
     session['customer_phone'] = request.form['customer_phone']
     session['delivery_addr'] = request.form['delivery_addr']
     session['delivery_date'] = request.form['delivery_date']
-    session['sharing_status'] = request.form.get("sharing_status")
+    session['sharing_span'] = request.form.get("sharing_span")
     session['nb_pizza'] = request.form['nb_pizza']
     session['message'] = request.form['message']
     if session['delivery_addr']:
@@ -236,8 +236,7 @@ def message():
     if session['delivery_date']:
         order.delivery_date = datetime.strptime(session['delivery_date'], TS_FORMAT)
         order.now = False
-    if session['sharing_status']:
-        order.sharing_status = True
+    order.sharing_span = session['sharing_span']
     order.phone = session['customer_phone']
     order.message = session['message']
     pizza_list = session['customer_selection'].strip().split(",")
@@ -255,21 +254,30 @@ def message():
     for pizza in order.pizzas:
         bill += format_table_row(pizza["amount"], "x", pizza["name"], "", "$ ", pizza["price"], "", "$ ", pizza["price"]*pizza["amount"])
 
+    bill += format_table_row("", "", "Delivery charge", "", "", "", "", "$ ", DELIVERY_CHARGE)
+
     if not order.pickup:
-        bill += format_table_row("", "", "Delivery charge", "", "", "", "", "$ ", DELIVERY_CHARGE)
+        if order.sharing_span != 0:
+            discount = DELIVERY_CHARGE*float(order.sharing_span)*2/100
+            bill += format_table_row("", "", "Sharing option discount", "", "", "", "-", "$ ", discount)
+            sharing_txt = "+/- {} mins".format(order.sharing_span)
+        else:
+            discount = 0.0
+            sharing_txt = "approx."
 
     # print the line before total
     bill += format_table_row("", "", "", "", "", "", "", "", "----------")
 
     # print the total of the order
-    bill += format_table_row("", "", "", "", "", "<strong>Total:</strong>", "", "<strong>$ </strong>", order.cost)
+    bill += format_table_row("", "", "", "", "", "<strong>Total:</strong>", "", "<strong>$ </strong>", order.cost-discount)
 
     bill = Markup(bill)
 
     if order.delivery_date is not None:
-        final_date = order.delivery_date + timedelta(minutes = int(order.total_delay))
+        #final_date = order.delivery_date + timedelta(minutes = int(order.total_delay))
+        final_date = order.delivery_date
         if order.pickup:
-            delay_msg = "Will be ready on: {:3} min (approx.)".format(final_date.strftime(TS_FORMAT))
+            delay_msg = "Will be ready on: {:3} min ({})".format(final_date.strftime(TS_FORMAT), sharing_txt)
             return render_template('message.html', name=order.name,
                                                    date=order.date.strftime(TS_FORMAT),
                                                    type="Pickup",
@@ -284,7 +292,7 @@ def message():
                 if order.delay == 0:
                     delay_msg = "Delivered on: Unknown"
                 else:
-                    delay_msg = "Delivered on: {:3} min (approx.)".format(final_date.strftime(TS_FORMAT))
+                    delay_msg = "Delivered on: {:3} min ({})".format(final_date.strftime(TS_FORMAT), sharing_txt)
                 addr_msg = "Delivery address: " + session['delivery_addr']
                 return render_template('message.html', name=order.name,
                                                       date=order.date.strftime(TS_FORMAT),
@@ -299,7 +307,7 @@ def message():
                #print "We have not been able to contact the delivery system."
     else:
         if order.pickup:
-            delay_msg = "Ready in: {:3} min (approx.)".format(order.total_delay)
+            delay_msg = "Ready in: {:3} minutes ({})".format(order.total_delay, sharing_txt)
             return render_template('message.html', name=order.name,
                                                    date=order.date.strftime(TS_FORMAT),
                                                    type="Pickup",
@@ -314,7 +322,7 @@ def message():
                 if order.delay == 0:
                     delay_msg = "Delivered in: Unknown"
                 else:
-                    delay_msg = "Delivered in: {:3} min (approx.)".format(order.total_delay)
+                    delay_msg = "Delivered in: {:3} minutes ({})".format(order.total_delay, sharing_txt)
                 addr_msg = "Delivery address: " + session['delivery_addr']
                 return render_template('message.html', name=order.name,
                                                       date=order.date,

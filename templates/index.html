@@ -22,7 +22,15 @@
             <p><label>Address (delivery, if any):</label> <input type="text" name="delivery_addr"></p>
             <p><label>Number of Pizza to order:</label> <input type="number" name="nb_pizza" min="1" max="5" required></p>
             <p><label>Delivery date (if not today):</label> <input type="datetime-local" name="delivery_date" placeholder="{{ now }}"></p>
-            <p><label>Would you agree to share delivery (slight delay may occur):</label> <input type="checkbox" name="sharing_status" value="sharing"></p>
+            <p><label>Your delivery cost might be shared with others. If you agree with this system, please select your tolerable interval (+/- x minutes):</label> <select name="sharing_span">
+                <option value=0>0</option>
+                <option value=5>5</option>
+                <option value=10 selected>10</option>
+                <option value=15>15</option>
+                <option value=20>20</option>
+                <option value=25>25</option>
+                <option value=30>30</option>
+        </select></p>
             <p><label>Additional Message:</label> <textarea name="message"></textarea></p>
             <p><button type="submit">Send</button><input type="reset"></p>
         </form>
