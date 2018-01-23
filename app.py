@@ -119,8 +119,8 @@ def make_sinfo_json(shop_name, shop_phone, shop_address):
     return data
 
 def make_order_json(order_id, order_date, order_preparation, order_max_keep, order_list):
-    data = {"id":order_id, "date":order_date, "dFormat":TS_FORMAT,
-        "preparation":order_preparation, "pUnit":"min",
+    data = {"id":order_id, "generatedBy":"website", "date":order_date,
+        "dFormat":TS_FORMAT, "preparation":order_preparation, "pUnit":"min",
         "keeptime": order_max_keep, "kUnit":"min", "list":order_list, "lType":"pizza"}
     return data
 
