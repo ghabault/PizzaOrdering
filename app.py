@@ -2,10 +2,24 @@ from datetime import datetime, timedelta
 import re
 import requests
 import json
+####
+import StringIO
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+####
+from random_module import *
+from order import *
 from flask import Flask, render_template, request, redirect, url_for, abort, session, Markup
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'F34TF$($e34D';
+
+hour_dist = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+    19, 20, 21, 22, 23]
+order_prob = [0.0405, 0.027, 0.0135, 0.0135, 0.0005, 0.0005, 0.0135, 0.0135,
+    0.027, 0.027, 0.0405, 0.054, 0.0675, 0.054, 0.054, 0.0405, 0.0405, 0.054,
+    0.0675, 0.0675, 0.081, 0.081, 0.0675, 0.054]
 
 # CONFIG
 DMS_URL = "https://automatic-vehicle.herokuapp.com/"
@@ -43,6 +57,7 @@ PIZZAS_AVAILABLE = (
     {"name": "Italiano",             "price": 13.5, "time": 4},
 )
 
+
 def get_delay(delivery_addr):
     """Send the customer information to the Delivery Management System, and receive delay"""
     delivery_delay = 0
@@ -60,33 +75,17 @@ def get_delay(delivery_addr):
         if delay is None:
             #print "Not receiving delay information"
             #print "Request = " + str(payload)
-            #print "Response = " + str(websource.text)
+            print "Response = " + str(websource.text)
             #print delay, oid
             return 0, oid
         else:
             delivery_delay = re.findall('\d+', str(delay))
-            #print delay, oid
+            print delay, oid
             return int(delivery_delay[0]), oid
     except(ValueError, KeyError, TypeError):
         #print "JSON format error"
-        #print str(websource.text)
+        print str(websource.text)
         return 0, 0
-
-def compute_preparation_delay(goods_list):
-    delay = 0
-    for pizza in goods_list:
-        if delay < pizza["time"]:
-            delay = pizza["time"]
-    delay += COOKING_DELAY
-    return delay
-
-def compute_delay(order):
-    """Compute the preparation (along with delivery, if any) delay"""
-    delay = 0
-    delay += order.preparation_time
-    if not order.pickup:
-        delay += order.delay
-    return delay
 
 def send_order(order):
     webpath = DMS_URL + ORDER_KEY
@@ -95,14 +94,6 @@ def send_order(order):
     #print str(json.dumps(payload, sort_keys=True, indent=4, separators=(',', ': ')))
     websource = requests.post(webpath, json=payload, auth=('yamanaka', 'yamanaka'))
     return websource.status_code
-
-def compute_cost(order):
-    cost = sum(
-        pizza["price"]*pizza["amount"]
-        for pizza in order.pizzas)
-    if not order.pickup:
-        cost += DELIVERY_CHARGE
-    return cost
 
 def make_getcmd_json(origin_address, destination_address):
     data = {"information":{"origin":origin_address, "destination":destination_address}}
@@ -127,12 +118,12 @@ def make_order_json(order_id, order_date, order_preparation, order_max_keep, ord
 def get_json_payload(order):
     sinfo = make_sinfo_json(SHOP_NAME, SHOP_PHONE, SHOP_ADDRESS)
     if order.now:
-        dinfo = make_dinfo_json(order.name, order.phone, order.delivery_address,
-            order.message, "", order.sharing_span)
+        date = ""
     else:
-        dinfo = make_dinfo_json(order.name, order.phone, order.delivery_address,
-            order.message, order.delivery_date.strftime(TS_FORMAT), order.sharing_span)
-    oinfo = make_order_json(order.ID, order.date.strftime(TS_FORMAT), order.preparation_time, order.max_keep_time, order.pizzas)
+        date = order.delivery_date.strftime(TS_FORMAT)
+    dinfo = make_dinfo_json(order.name, order.phone, order.delivery_address,
+        order.message, date, order.sharing_span)
+    oinfo = make_order_json(order.ID, order.date.strftime(TS_FORMAT), order.preparation_time, order.max_keep_time, order.items)
     data = {"information":{"shop":sinfo, "delivery":dinfo, "order":oinfo}}
     return data
 
@@ -148,49 +139,62 @@ def format_table_row(l_num, l_sym, l_text, c_num, c_sym, c_text, r_num, r_sym, r
     return row
 
 
-class Order():
-    """Holds each order's information, can get the information itself."""
-    def __init__(self):
-        # Order information
-        self.ID = 0
-        self.date = None
-        self.now = True
-        self.total_delay = 0
-        self.cost = 0
-        # Delivery information
-        self.name = ""
-        self.delivery_address = None
-        self.phone = None
-        self.message = ""
-        self.delivery_date = None
-        self.delay = 0
-        self.sharing_span = 0 # 0 = no sharing
-        self.pickup = False
-        self.isDelivered = False
-        # Goods information
-        self.pizzas = []
-        self.preparation_time = 0
-        self.max_keep_time = 0
-
-    def set_pizzas(self, number_pizzas, pizza_list):
-        for i in range(number_pizzas):
-            to_add = PIZZAS_AVAILABLE[int(pizza_list[i])-1]
-            # if the pizza has already been ordered,
-            # increment the amount ordered
-            for ordered in self.pizzas:
-                if to_add["name"] == ordered["name"]:
-                    ordered["amount"] += 1
-                    break
-            # else add the pizza to the order list
-            else:
-                to_add["amount"] = 1
-                self.pizzas.append(to_add)
-
-
 
 @app.route('/')
 def home():
     return render_template('index.html', now=str(datetime.now().strftime(TS_FORMAT)))
+
+@app.route('/script')
+def script():
+    return render_template('script.html')
+
+@app.route('/random', methods=['POST'])
+def random():
+    from generateOrders import generateOrderList, generatedDists, customer_names, hour_dist, order_prob, delivery_prob
+    session['start_date'] = request.form['start_date']
+    session['end_date'] = request.form['end_date']
+    session['nb_orders'] = request.form['nb_orders']
+    session['delivery_charge'] = request.form['delivery_charge']
+    session['max_items'] = request.form['max_items']
+    session['area_limits'] = request.form['area_limits']
+    orders = []
+
+    order_params = {'dist':hour_dist, 'prob':order_prob, 'num':int(session['nb_orders']),
+        'max_items':int(session['max_items']), 'list':PIZZAS_AVAILABLE}
+    delivery_params = {'dist':hour_dist, 'prob':delivery_prob, 'charge':int(session['delivery_charge'])}
+
+    orders = generateOrderList(session['start_date'], session['end_date'],
+        customer_names, order_params, delivery_params, session['area_limits'])
+
+    for order in orders:
+        order.compute_order_full_delay(COOKING_DELAY)
+
+    generated_distribution = generatedDists(orders)
+    fig = plt.figure()
+    ax1 = plt.subplot2grid((4,4), (0,0), rowspan=2)
+    ax1.set_title("Orders hour")
+    ax1.set_xlim(0,24)
+    sns.distplot(generated_distribution['order'])
+    ax2 = plt.subplot2grid((4,4), (2,0), rowspan=2)
+    ax2.set_title("Deliveries hour")
+    ax2.set_xlim(0,24)
+    sns.distplot(generated_distribution['delivery'])
+    ax3 = plt.subplot2grid((4,4), (0,1), colspan=3, rowspan=4)
+    ax3.set_title("Orders position")
+
+    plt.tight_layout()
+    plt.suptitle("Generated distributions")
+
+    strio = StringIO.StringIO()
+    fig.savefig(strio, format="svg")
+    plt.close(fig)
+
+    strio.seek(0)
+    svgstr = strio.buf[strio.buf.find("<svg"):]
+    return render_template('analysis.html', start_dt=session['start_date'],
+        end_dt=session['end_date'], nb_orders=session['nb_orders'],
+        area_info=session['area_limits'], num_generation=len(orders),
+        img_analysis=Markup(svgstr.decode("utf-8")))
 
 @app.route('/signup', methods=['POST'])
 def signup():
@@ -227,49 +231,45 @@ def message():
     order = Order()
     order.ID = session['order_id']
     order.name = session['customer_name']
+    order.phone = session['customer_phone']
+    order.message = session['message']
     if session['delivery_addr']:
         order.pickup = False
         order.delivery_address = session['delivery_addr']
         order.delay = session['delivery_delay']
+        order.sharing_span = int(session['sharing_span'])
     else:
         order.pickup = True
     if session['delivery_date']:
         order.delivery_date = datetime.strptime(session['delivery_date'], TS_FORMAT)
         order.now = False
-    order.sharing_span = session['sharing_span']
-    order.phone = session['customer_phone']
-    order.message = session['message']
+
     pizza_list = session['customer_selection'].strip().split(",")
     # print pizza_list
-    order.set_pizzas(int(session['nb_pizza']), pizza_list)
-    order.cost = compute_cost(order)
-    order.preparation_time = compute_preparation_delay(order.pizzas)
+    order.set_items(int(session['nb_pizza']), pizza_list, PIZZAS_AVAILABLE)
+    order.compute_order_full_cost(DELIVERY_CHARGE, 2)
     order.max_keep_time = MAX_KEEP_PIZZAS
-    order.total_delay = compute_delay(order)
+    order.compute_order_full_delay(COOKING_DELAY)
     order.date = datetime.now()
 
     bill = """
     """
     bill += format_table_row("", "", "<strong>Order summary:</strong>", "", "", "<strong>Price each:</strong>", "", "", "<strong>Subtotal:</strong>")
-    for pizza in order.pizzas:
-        bill += format_table_row(pizza["amount"], "x", pizza["name"], "", "$ ", pizza["price"], "", "$ ", pizza["price"]*pizza["amount"])
+    for item in order.items:
+        bill += format_table_row(item["amount"], "x", item["name"], "", "$ ", item["price"], "", "$ ", item["price"]*item["amount"])
 
-    bill += format_table_row("", "", "Delivery charge", "", "", "", "", "$ ", DELIVERY_CHARGE)
-
+    sharing_txt = "approx."
     if not order.pickup:
-        if order.sharing_span != 0:
-            discount = DELIVERY_CHARGE*float(order.sharing_span)*2/100
-            bill += format_table_row("", "", "Sharing option discount", "", "", "", "-", "$ ", discount)
+        bill += format_table_row("", "", "Delivery charge", "", "", "", "", "$ ", DELIVERY_CHARGE)
+        if order.sharing_span is not 0:
+            bill += format_table_row("", "", "Sharing option discount", "", "", "", "-", "$ ", order.delivery_discount)
             sharing_txt = "+/- {} mins".format(order.sharing_span)
-        else:
-            discount = 0.0
-            sharing_txt = "approx."
 
     # print the line before total
     bill += format_table_row("", "", "", "", "", "", "", "", "----------")
 
     # print the total of the order
-    bill += format_table_row("", "", "", "", "", "<strong>Total:</strong>", "", "<strong>$ </strong>", order.cost-discount)
+    bill += format_table_row("", "", "", "", "", "<strong>Total:</strong>", "", "<strong>$ </strong>", order.total_cost)
 
     bill = Markup(bill)
 
@@ -293,7 +293,7 @@ def message():
                     delay_msg = "Delivered on: Unknown"
                 else:
                     delay_msg = "Delivered on: {:3} min ({})".format(final_date.strftime(TS_FORMAT), sharing_txt)
-                addr_msg = "Delivery address: " + session['delivery_addr']
+                addr_msg = Markup("<strong>Delivery address:</strong> " + session['delivery_addr'])
                 return render_template('message.html', name=order.name,
                                                       date=order.date.strftime(TS_FORMAT),
                                                       type="Delivery",
@@ -323,7 +323,7 @@ def message():
                     delay_msg = "Delivered in: Unknown"
                 else:
                     delay_msg = "Delivered in: {:3} minutes ({})".format(order.total_delay, sharing_txt)
-                addr_msg = "Delivery address: " + session['delivery_addr']
+                addr_msg = Markup("<strong>Delivery address:</strong> " + session['delivery_addr'])
                 return render_template('message.html', name=order.name,
                                                       date=order.date,
                                                       type="Delivery",
