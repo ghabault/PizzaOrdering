@@ -3,7 +3,7 @@ import re
 import requests
 import json
 ####
-import StringIO
+import io
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -150,7 +150,21 @@ def script():
 
 @app.route('/random', methods=['POST'])
 def random():
-    from generateOrders import generateOrderList, generatedDists, customer_names, hour_dist, order_prob, delivery_prob
+    #### Variables for generation
+    customer_names = ["Iwasaki","Nakajima","Imakiire","Kamio","Takemura","Hirono",
+        "Yamashita","Aoki","Sekigawa","Mikuni","Yarita","Kubokawa","Hara","Fukumoto",
+        "Murakami","Yamada","Osuna","Yamamoto","Miyazaki","Aoi"]
+
+    hour_dist = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+        19, 20, 21, 22, 23]
+    order_prob = [0.0405, 0.027, 0.0135, 0.0135, 0.0005, 0.0005, 0.0135, 0.0135,
+        0.027, 0.027, 0.0405, 0.054, 0.0675, 0.054, 0.054, 0.0405, 0.0405, 0.054,
+        0.0675, 0.0675, 0.081, 0.081, 0.0675, 0.054]
+    delivery_prob = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0481,
+        0.12025, 0.12025, 0.0481, 0.0034875, 0.0034875, 0.0034875, 0.0034875, 0.0481,
+        0.21645, 0.21645, 0.12025, 0.0481, 0.0]
+
+    #### Input from user
     session['start_date'] = request.form['start_date']
     session['end_date'] = request.form['end_date']
     session['nb_orders'] = request.form['nb_orders']
@@ -171,30 +185,34 @@ def random():
 
     generated_distribution = generatedDists(orders)
     fig = plt.figure()
-    ax1 = plt.subplot2grid((4,4), (0,0), rowspan=2)
+    ax1 = plt.subplot2grid((4,5), (0,0), rowspan=2, colspan=2)
     ax1.set_title("Orders hour")
     ax1.set_xlim(0,24)
     sns.distplot(generated_distribution['order'])
-    ax2 = plt.subplot2grid((4,4), (2,0), rowspan=2)
+    ax2 = plt.subplot2grid((4,5), (2,0), rowspan=2, colspan=2)
     ax2.set_title("Deliveries hour")
     ax2.set_xlim(0,24)
     sns.distplot(generated_distribution['delivery'])
-    ax3 = plt.subplot2grid((4,4), (0,1), colspan=3, rowspan=4)
+    ax3 = plt.subplot2grid((4,5), (0,2), colspan=3, rowspan=4)
     ax3.set_title("Orders position")
 
-    plt.tight_layout()
     plt.suptitle("Generated distributions")
+    plt.tight_layout()
 
-    strio = StringIO.StringIO()
+
+    #strio = StringIO.StringIO()
+    strio = io.StringIO()
     fig.savefig(strio, format="svg")
     plt.close(fig)
 
     strio.seek(0)
-    svgstr = strio.buf[strio.buf.find("<svg"):]
+    #svgstr = strio.buf[strio.buf.find("<svg"):]
+    svgstr = '<svg' + strio.getvalue().split('<svg')[1]
     return render_template('analysis.html', start_dt=session['start_date'],
         end_dt=session['end_date'], nb_orders=session['nb_orders'],
         area_info=session['area_limits'], num_generation=len(orders),
         img_analysis=Markup(svgstr.decode("utf-8")))
+        #img_analysis=Markup(unicode(svgstr, "utf-8")))
 
 @app.route('/signup', methods=['POST'])
 def signup():
