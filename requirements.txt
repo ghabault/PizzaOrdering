@@ -6,4 +6,4 @@ Markdown==2.6.9
 MarkupSafe==1.0
 pipenv==8.3.2
 requests==2.18.4
-
+numpy==1.14.0

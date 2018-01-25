@@ -8,6 +8,8 @@ from random_module import *
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+print np.version.version
+
 start_date = "2018-01-24T00:00"
 end_date = "2018-01-31T23:00"
 

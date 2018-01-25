@@ -75,16 +75,16 @@ def get_delay(delivery_addr):
         if delay is None:
             #print "Not receiving delay information"
             #print "Request = " + str(payload)
-            print "Response = " + str(websource.text)
+            #print "Response = " + str(websource.text)
             #print delay, oid
             return 0, oid
         else:
             delivery_delay = re.findall('\d+', str(delay))
-            print delay, oid
+            #print delay, oid
             return int(delivery_delay[0]), oid
     except(ValueError, KeyError, TypeError):
         #print "JSON format error"
-        print str(websource.text)
+        #print str(websource.text)
         return 0, 0
 
 def send_order(order):
