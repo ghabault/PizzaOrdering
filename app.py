@@ -199,7 +199,6 @@ def random():
     plt.suptitle("Generated distributions")
     plt.tight_layout()
 
-
     #strio = StringIO.StringIO()
     strio = io.StringIO()
     fig.savefig(strio, format="svg")
