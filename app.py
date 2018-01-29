@@ -233,7 +233,8 @@ def random():
         end_dt=session['end_date'], nb_orders=session['nb_orders'],
         seed=session['seed'], num_generation=len(orders),
         # img_analysis=Markup(svgstr.decode("utf-8")))
-        img_analysis=Markup(unicode(svgstr, "utf-8")))
+        # img_analysis=Markup(unicode(svgstr, "utf-8")))
+        img_analysis=Markup(svgstr))
 
 @app.route('/signup', methods=['POST'])
 def signup():
