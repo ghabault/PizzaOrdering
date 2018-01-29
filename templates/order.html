@@ -150,6 +150,7 @@
     </svg>
   </div>
   <div class="column right">
+    <h3>Make your choice from this menu ({{ nb_items }} p.)</h3> 
     <table>{{ menu }}</table>
     <p> Please separate pizza numbers by a coma.</p>
     <form method="post" action="{{ url_for('message') }}">

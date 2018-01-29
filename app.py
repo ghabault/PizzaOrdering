@@ -1,12 +1,12 @@
 from datetime import datetime, timedelta
-import re
+import re, ast
 import requests
 import json
 ####
 import io
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 ####
@@ -89,9 +89,9 @@ def get_delay(delivery_addr):
         #print str(websource.text)
         return 0, 0
 
-def send_order(order):
+def send_order(order, generation_type):
     webpath = DMS_URL + ORDER_KEY
-    payload = get_json_payload(order)
+    payload = get_json_payload(order, generation_type)
 
     #print str(json.dumps(payload, sort_keys=True, indent=4, separators=(',', ': ')))
     websource = requests.post(webpath, json=payload, auth=('yamanaka', 'yamanaka'))
@@ -111,13 +111,13 @@ def make_sinfo_json(shop_name, shop_phone, shop_address):
     data = {"name":shop_name,"phone":shop_phone,"address":shop_address}
     return data
 
-def make_order_json(order_id, order_date, order_preparation, order_max_keep, order_list):
-    data = {"id":order_id, "generatedBy":"website", "date":order_date,
+def make_order_json(order_id, generation_type, order_date, order_preparation, order_max_keep, order_list):
+    data = {"id":order_id, "generatedBy":generation_type, "date":order_date,
         "dFormat":TS_FORMAT, "preparation":order_preparation, "pUnit":"min",
         "keeptime": order_max_keep, "kUnit":"min", "list":order_list, "lType":"pizza"}
     return data
 
-def get_json_payload(order):
+def get_json_payload(order, generation_type):
     sinfo = make_sinfo_json(SHOP_NAME, SHOP_PHONE, SHOP_ADDRESS)
     if order.now:
         date = ""
@@ -125,7 +125,7 @@ def get_json_payload(order):
         date = order.delivery_date.strftime(TS_FORMAT)
     dinfo = make_dinfo_json(order.name, order.phone, order.delivery_address,
         order.message, date, order.sharing_span)
-    oinfo = make_order_json(order.ID, order.date.strftime(TS_FORMAT), order.preparation_time, order.max_keep_time, order.items)
+    oinfo = make_order_json(order.ID, generation_type, order.date.strftime(TS_FORMAT), order.preparation_time, order.max_keep_time, order.items)
     data = {"information":{"shop":sinfo, "delivery":dinfo, "order":oinfo}}
     return data
 
@@ -166,20 +166,36 @@ def random():
         0.12025, 0.12025, 0.0481, 0.0034875, 0.0034875, 0.0034875, 0.0034875, 0.0481,
         0.21645, 0.21645, 0.12025, 0.0481, 0.0]
 
+    def getAxisPoints(source_list):
+        xs = []
+        ys = []
+
+        for element in source_list:
+            xs.append(element[0])
+            ys.append(element[1])
+
+        return xs, ys
+
     #### Input from user
     session['start_date'] = request.form['start_date']
     session['end_date'] = request.form['end_date']
     session['nb_orders'] = request.form['nb_orders']
     session['delivery_charge'] = request.form['delivery_charge']
     session['max_items'] = request.form['max_items']
-    session['area_limits'] = request.form['area_limits']
+    session['area_limits'] = ast.literal_eval(request.form['area_limits'])
+    session['seed'] = int(request.form['seed'])
+
+    # inputs = session['area_limits'].split(",")
     orders = []
+    positions = []
+
+    np.random.seed(session['seed'])
 
     order_params = {'dist':hour_dist, 'prob':order_prob, 'num':int(session['nb_orders']),
         'max_items':int(session['max_items']), 'list':PIZZAS_AVAILABLE}
     delivery_params = {'dist':hour_dist, 'prob':delivery_prob, 'charge':int(session['delivery_charge'])}
 
-    orders = generateOrderList(session['start_date'], session['end_date'],
+    orders, positions = generateOrderList(session['start_date'], session['end_date'],
         customer_names, order_params, delivery_params, session['area_limits'])
 
     for order in orders:
@@ -197,8 +213,12 @@ def random():
     sns.distplot(generated_distribution['delivery'])
     ax3 = plt.subplot2grid((4,5), (0,2), colspan=3, rowspan=4)
     ax3.set_title("Orders position")
+    xs, ys = getAxisPoints(session['area_limits'])
+    plt.plot(xs, ys, '--')
+    xs, ys = getAxisPoints(positions)
+    plt.plot(xs, ys, 'bo')
 
-    plt.suptitle("Generated distributions")
+    plt.suptitle("Generated distributions", y=1)
     plt.tight_layout()
 
     #strio = StringIO.StringIO()
@@ -211,7 +231,7 @@ def random():
     svgstr = '<svg' + strio.getvalue().split('<svg')[1]
     return render_template('analysis.html', start_dt=session['start_date'],
         end_dt=session['end_date'], nb_orders=session['nb_orders'],
-        area_info=session['area_limits'], num_generation=len(orders),
+        seed=session['seed'], num_generation=len(orders),
         img_analysis=Markup(svgstr.decode("utf-8")))
         #img_analysis=Markup(unicode(svgstr, "utf-8")))
 
@@ -239,7 +259,7 @@ def order_page():
         # so the first pizza is 1
         menu += format_table_row("", "#", str(i+1).zfill(2), "", "", pizza["name"], "", "$ ", str(pizza["price"]))
     menu = Markup(menu)
-    return render_template('order.html', menu=menu)
+    return render_template('order.html', menu=menu, nb_items=session['nb_pizza'])
 
 
 @app.route('/message', methods=['POST'])
@@ -248,11 +268,11 @@ def message():
     if not 'customer_name' in session:
         return abort(403)
     order = Order()
-    order.ID = session['order_id']
     order.name = session['customer_name']
     order.phone = session['customer_phone']
     order.message = session['message']
     if session['delivery_addr']:
+        order.ID = session['order_id']
         order.pickup = False
         order.delivery_address = session['delivery_addr']
         order.delay = session['delivery_delay']
@@ -305,7 +325,7 @@ def message():
                                                    phone=session['customer_phone'],
                                                    message=session['message'])
         else:
-            response_code = send_order(order)
+            response_code = send_order(order, "website")
             if(response_code == 200):
 
                 if order.delay == 0:
@@ -335,7 +355,7 @@ def message():
                                                    phone=session['customer_phone'],
                                                    message=session['message'])
         else:
-            response_code = send_order(order)
+            response_code = send_order(order, "website")
             #print response_code
             if(response_code == 200):
                 if order.delay == 0:

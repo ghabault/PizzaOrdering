@@ -1,6 +1,7 @@
 import numpy as np
 from datetime import datetime, timedelta
 from order import *
+from shapely.geometry import Polygon, Point
 
 def generatedDists(source_list):
     order_dist = []
@@ -47,10 +48,26 @@ def generatePhoneNumber():
             phone_str += "{}".format(phone_number[i])
     return phone_str
 
+def random_points_within(area, num_points):
+    polygon = Polygon(area)
+    min_x, min_y, max_x, max_y = polygon.bounds
+
+    points = []
+
+    while len(points) < num_points:
+        random_point = Point([np.random.uniform(min_x, max_x), np.random.uniform(min_y, max_y)])
+        if (random_point.within(polygon)):
+            points.append([random_point.x, random_point.y])
+
+    return points
+
 def generateOrderList(date_start, date_end, names, order_params, delivery_params,
     position_limits):
     start_dt = datetime.strptime(date_start, "%Y-%m-%dT%H:%M")
     end_dt = datetime.strptime(date_start, "%Y-%m-%dT%H:%M")
+
+    # Determine the delivery addresses
+    generatedPositions = random_points_within(position_limits, order_params['num'])
 
     orders = []
     for i in range(order_params['num']):
@@ -59,7 +76,7 @@ def generateOrderList(date_start, date_end, names, order_params, delivery_params
         order.name = np.random.choice(names)
         order.phone = generatePhoneNumber()
         # Determine the delivery shop_address
-        #order.delivery_address = generateDeliveryAddress(position_limits)
+        order.delivery_address = generatedPositions[i]
         # Determine the order date
         order.date = generateDate(start_dt, range(0,(end_dt-start_dt).days+1), order_params['dist'], order_params['prob'], range(0,60))
 
@@ -87,4 +104,4 @@ def generateOrderList(date_start, date_end, names, order_params, delivery_params
         order.items = items_list
         order.compute_order_full_cost(delivery_params['charge'], 2)
         orders.append(order)
-    return orders
+    return orders, generatedPositions
