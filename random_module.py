@@ -20,9 +20,9 @@ def updateDictInList(source_list, name):
     return False
 
 def generateDate(start_datetime, date_range, hour_distribution, hour_probability, min_range):
-    day = np.random.choice(date_range)
-    hour = np.random.choice(hour_distribution, p=hour_probability)
-    minute = np.random.choice(min_range)
+    day = int(np.random.choice(date_range))
+    hour = int(np.random.choice(hour_distribution, p=hour_probability))
+    minute = int(np.random.choice(min_range))
     return start_datetime + timedelta(days=day, hours=hour, minutes=minute)
 
 def compareTimes(test_date, time_min, time_max):
