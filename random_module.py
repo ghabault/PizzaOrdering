@@ -20,10 +20,14 @@ def updateDictInList(source_list, name):
     return False
 
 def generateDate(start_datetime, date_range, hour_distribution, hour_probability, min_range):
-    day = int(np.random.choice(date_range))
-    hour = int(np.random.choice(hour_distribution, p=hour_probability))
-    minute = int(np.random.choice(min_range))
-    return start_datetime + timedelta(days=day, hours=hour, minutes=minute)
+    result_dt = start_datetime + timedelta(days=-1)
+    while result_dt < start_datetime:
+        day = int(np.random.choice(date_range))
+        hour = int(np.random.choice(hour_distribution, p=hour_probability))
+        minute = int(np.random.choice(min_range))
+        result_dt += timedelta(days=day+1)
+        result_dt = result_dt.replace(hour=hour, minute=minute)
+    return result_dt
 
 def compareTimes(test_date, time_min, time_max):
     min_dt = datetime.strptime(time_min, "%H:%M")
@@ -90,8 +94,9 @@ def generateOrderList(date_start, date_end, names, order_params, delivery_params
             # Determine the delivery date
             order.delivery_date = generateDate(order.date, range(1,8), delivery_params['dist'], delivery_params['prob'], range(0,60,5))
 
-        # Determine the sharing span the user agrees to
-        order.sharing_span = np.random.choice(range(0,31,5),p=[0.05,0.1,0.2,0.3,0.2,0.1,0.05])
+        order.sharing = np.random.choice([True,False])
+        # Determine the flexibility span the user agrees to
+        order.flexibility = np.random.choice(range(0,31,5),p=[0.05,0.1,0.2,0.3,0.2,0.1,0.05])
 
         # Determine the number of Items
         nb_items = np.random.choice(range(1, order_params['max_items']+1))

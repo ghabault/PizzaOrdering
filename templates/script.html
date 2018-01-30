@@ -356,13 +356,48 @@
       <div class="column right">
         <p> Fill in the following information:</p>
         <form method="post" action="{{ url_for('random') }}">
-            <p><label>Script start date and time:</label> <input type="datetime-local" name="start_date" placeholder="{{ now }}" required></p>
-            <p><label>Script end date and time:</label> <input type="datetime-local" name="end_date" placeholder="{{ now }}" required></p>
-            <p><label>Number of desired orders in this time range:</label> <input type="number" name="nb_orders" required></p>
-            <p><label>Maximum items per order:</label> <input type="number" name="max_items" required></p>
-            <p><label>Define the normal delivery charge:</label> <input type="number" name="delivery_charge" required></p>
-            <p><label>GPS Coordinate of the desired delivery area (at least 4):</label> <textarea name="area_limits" required></textarea></p>
-            <p><label>Select a seed number (with a given seed, the parameters produce the same outputs):</label> <input type="number" name="seed" required></p>
+            <p>
+              <label>Shop name:</label>
+              <input type="text" name="shop_name" value="Pizza'Bunga">
+            </p>
+            <p>
+              <label>Shop phone number:</label>
+              <input type="tel" name="shop_phone" value="080-4627-6196">
+            </p>
+            <p>
+              <label>Shop address:</label>
+              <input type="text" name="shop_addr" value="4-31-8 Kizuki, Nakahara-ku, Kawazaki-shi, 211-0025">
+            </p>
+            <p>
+              <label>Script start date and time:</label>
+              <input type="datetime-local" name="start_date" placeholder="{{ now }}" required>
+            </p>
+            <p>
+              <label>Script end date and time:</label>
+              <input type="datetime-local" name="end_date" placeholder="{{ now }}" required>
+            </p>
+            <p>
+              <label>Number of desired orders in this time range:</label>
+              <input type="number" name="nb_orders" required>
+            </p>
+            <p>
+              <label>Maximum items per order:</label>
+              <input type="number" name="max_items" required>
+            </p>
+            <p>
+              <label>Define the normal delivery charge:</label>
+              <input type="number" name="delivery_charge" required>
+            </p>
+            <p>
+              <label>GPS Coordinate of the desired delivery area (at least 3).
+                <br> This <a href="https://www.daftlogic.com/projects-google-maps-area-calculator-tool.htm">website</a> can be used to determine the area.</br>
+              </label>
+              <textarea name="area_limits" required></textarea>
+            </p>
+            <p>
+              <label>Select a seed number (with a given seed, same parameters produce the same outputs):</label>
+              <input type="number" name="seed" required>
+            </p>
             <p><button type="submit">Send</button><input type="reset"></p>
         </form>
       </div>

@@ -14,12 +14,14 @@ class Order():
         self.name = ""
         self.delivery_address = None
         self.delivery_cost = 0
-        self.delivery_discount = 0.0
+        self.flexibility_discount = 0.0
+        self.sharing_discount = 0.0
         self.phone = None
         self.message = ""
         self.delivery_date = None
         self.delay = 0
-        self.sharing_span = 0 # 0 = no sharing
+        self.sharing = False
+        self.flexibility = 0
         self.pickup = False
         self.isDelivered = False
         # Items information
@@ -68,11 +70,13 @@ class Order():
 
     def compute_delivery_cost(self, delivery_charge, discount_level):
         self.delivery_cost = delivery_charge
-        if self.sharing_span != 0:
-            self.delivery_discount = delivery_charge*float(self.sharing_span)*discount_level/100
+        if self.sharing:
+            self.sharing_discount = delivery_charge*float(20)/100
 
     def compute_order_full_cost(self, delivery_charge, discount_level):
         self.compute_items_cost()
+        if self.flexibility != 0:
+            self.flexibility_discount = delivery_charge*float(self.flexibility)*discount_level/100
         if not self.pickup:
             self.compute_delivery_cost(delivery_charge, discount_level)
-        self.total_cost = self.items_cost + self.delivery_cost - self.delivery_discount
+        self.total_cost = self.items_cost + self.delivery_cost - self.flexibility_discount - self.sharing_discount

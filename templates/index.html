@@ -156,12 +156,33 @@
       <div class="column right">
         <p> Fill in <strong>Customer</strong> information:</p>
         <form method="post" action="{{ url_for('signup') }}">
-            <p><label>Name:</label> <input type="text" name="customer_name" required></p>
-            <p><label>Phone number:</label> <input type="tel" name="customer_phone" required></p>
-            <p><label>Address (If you want to be delivered):</label> <input type="text" name="delivery_addr"></p>
-            <p><label>Number of Pizza to order:</label> <input type="number" name="nb_pizza" min="1" max="5" required></p>
-            <p><label>Delivery date (if not now):</label> <input type="datetime-local" name="delivery_date" placeholder="{{ now }}"></p>
-            <p><label>Your delivery cost might be shared with others. If you agree with this system, please select your tolerable interval (+/- x minutes):</label> <select name="sharing_span">
+            <p>
+              <label>Name:</label>
+              <input type="text" name="customer_name" required>
+            </p>
+            <p>
+              <label>Phone number:</label>
+              <input type="tel" name="customer_phone" required>
+            </p>
+            <p>
+              <label>Address (If you want to be delivered):</label>
+              <input type="text" name="delivery_addr">
+            </p>
+            <p>
+              <label>Number of Pizza to order:</label>
+              <input type="number" name="nb_pizza" min="1" max="5" required>
+            </p>
+            <p>
+              <label>Delivery date (if not now):</label>
+              <input type="datetime-local" name="delivery_date" placeholder="{{ now }}">
+            </p>
+            <p>
+              <label>Your delivery cost might be reduced if you accept to share delivery with others.<br>Would you like to share delivery ?</br></label>
+              <input type="checkbox" name="sharing_status" value="sharing"/>
+            </p>
+            <p>
+              <label>Your order cost could be reduced if you agree to have delay on your delivery.<br>If you agree with this system, please select your tolerable interval (+/- x minutes):</br></label>
+              <select name="flexibility">
                 <option value=0>0</option>
                 <option value=5>5</option>
                 <option value=10 selected>10</option>
@@ -169,8 +190,12 @@
                 <option value=20>20</option>
                 <option value=25>25</option>
                 <option value=30>30</option>
-        </select></p>
-            <p><label>Additional Message:</label> <textarea name="message"></textarea></p>
+              </select>
+            </p>
+            <p>
+              <label>Additional message regarding the delivery (if any):</label>
+              <textarea name="message"></textarea>
+            </p>
             <p><button type="submit">Send</button><input type="reset"></p>
         </form>
       </div>

@@ -111,7 +111,7 @@ def get_json_payload(order):
     else:
         date = order.delivery_date.strftime("%Y-%m-%dT%H:%M")
     dinfo = make_dinfo_json(order.name, order.phone, order.delivery_address,
-        order.message, date, order.sharing_span)
+        order.message, date, order.sharing, order.flexibility)
     oinfo = make_order_json(order.ID, "script", order.date.strftime("%Y-%m-%dT%H:%M"),
         order.preparation_time, order.max_keep_time, order.items)
     data = {"information":{"shop":shop_json, "delivery":dinfo, "order":oinfo}}
