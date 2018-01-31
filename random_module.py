@@ -80,9 +80,10 @@ def generateOrderList(date_start, date_end, names, order_params, delivery_params
         order.name = np.random.choice(names)
         order.phone = generatePhoneNumber()
         # Determine the delivery shop_address
-        order.delivery_address = generatedPositions[i]
+        order.delivery_address = {'lat':generatedPositions[i][0], 'lon':generatedPositions[i][1]}
         # Determine the order date
-        order.date = generateDate(start_dt, range(0,(end_dt-start_dt).days+1), order_params['dist'], order_params['prob'], range(0,60))
+        order.date = generateDate(start_dt, range(0,(end_dt-start_dt).days+1),
+            order_params['dist'], order_params['prob'], range(0,60))
 
         # Determine if the delivery is asap or planned
         if compareTimes(order.date, "08:00", "22:00"):
@@ -92,7 +93,8 @@ def generateOrderList(date_start, date_end, names, order_params, delivery_params
             order.now = np.random.choice([True,False])
         if not order.now:
             # Determine the delivery date
-            order.delivery_date = generateDate(order.date, range(1,8), delivery_params['dist'], delivery_params['prob'], range(0,60,5))
+            order.delivery_date = generateDate(order.date, range(1,8),
+                delivery_params['dist'], delivery_params['prob'], range(0,60,5))
 
         order.sharing = np.random.choice([True,False])
         # Determine the flexibility span the user agrees to
