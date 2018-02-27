@@ -66,37 +66,40 @@ def random_points_within(area, num_points):
     return points
 
 def generateOrderList(date_start, date_end, names, order_params, delivery_params,
-    position_limits):
+    position_limits, resa_prob, share_prob):
+    # Delay to cook pizzas
+    COOKING_DELAY = 5
+
     start_dt = datetime.strptime(date_start, "%Y-%m-%dT%H:%M")
-    end_dt = datetime.strptime(date_start, "%Y-%m-%dT%H:%M")
+    end_dt = datetime.strptime(date_end, "%Y-%m-%dT%H:%M")
 
     # Determine the delivery addresses
-    generatedPositions = random_points_within(position_limits, order_params['num'])
+    generatedPositions = random_points_within(position_limits, order_params['num']+1)
 
     orders = []
-    for i in range(order_params['num']):
+    for i in range(order_params['num']+1):
         order = Order()
+        order.ID = i
         # Choose a customer Name and phone number
         order.name = np.random.choice(names)
         order.phone = generatePhoneNumber()
         # Determine the delivery shop_address
         order.delivery_address = {'lat':generatedPositions[i][0], 'lon':generatedPositions[i][1]}
         # Determine the order date
-        order.date = generateDate(start_dt, range(0,(end_dt-start_dt).days+1),
+        order.date = generateDate(start_dt, range(0,(end_dt-start_dt).days + 1),
             order_params['dist'], order_params['prob'], range(0,60))
-
         # Determine if the delivery is asap or planned
-        if compareTimes(order.date, "08:00", "22:00"):
-            # Between 22:00 and 08:00 the chance for the delivery to be asap are higher
-            order.now = np.random.choice([True,False], p=[0.7,0.3])
+        if compareTimes(order.date, "12:00", "14:00") or compareTimes(order.date, "19:00", "21:00"):
+            # Between 12:00 and 14:00 the chance for the delivery to be asap are higher
+            order.now = np.random.choice([True,False], p=[resa_prob,1-resa_prob])
         else:
-            order.now = np.random.choice([True,False])
+            order.now = np.random.choice([True,False], p=[1-resa_prob,resa_prob])
         if not order.now:
             # Determine the delivery date
             order.delivery_date = generateDate(order.date, range(1,8),
                 delivery_params['dist'], delivery_params['prob'], range(0,60,5))
 
-        order.sharing = np.random.choice([True,False])
+        order.sharing = np.random.choice([True,False], p=[1-share_prob,share_prob])
         # Determine the flexibility span the user agrees to
         order.flexibility = np.random.choice(range(0,31,5),p=[0.05,0.1,0.2,0.3,0.2,0.1,0.05])
 
@@ -109,6 +112,7 @@ def generateOrderList(date_start, date_end, names, order_params, delivery_params
                 element['amount'] = 1
                 items_list.append(element)
         order.items = items_list
+        order.compute_order_full_delay(COOKING_DELAY)
         order.compute_order_full_cost(delivery_params['charge'], 2)
         orders.append(order)
     return orders, generatedPositions

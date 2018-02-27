@@ -6,7 +6,8 @@ import json
 import io
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')
+# For online version only
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 ####
@@ -24,7 +25,8 @@ order_prob = [0.0405, 0.027, 0.0135, 0.0135, 0.0005, 0.0005, 0.0135, 0.0135,
     0.0675, 0.0675, 0.081, 0.081, 0.0675, 0.054]
 
 # CONFIG
-DMS_URL = "https://automatic-vehicle.herokuapp.com/"
+# DMS_URL = "https://automatic-vehicle.herokuapp.com/"
+DMS_URL = "http://delivery.yamanaka.k2.keio.ac.jp/"
 ORDER_KEY = "order_management.php"
 TS_FORMAT = "%Y-%m-%dT%H:%M"
 

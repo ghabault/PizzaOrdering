@@ -9,11 +9,13 @@ import matplotlib.pyplot as plt
 
 print np.version.version
 
-start_date = "2018-01-24T00:00"
-end_date = "2018-01-31T23:00"
+start_date = "2018-02-23T00:00"
+end_date = "2018-02-24T23:00"
 
-nb_orders = 100
+nb_orders = 15
 seed = 150
+
+output_file = open('generations', 'w')
 
 customer_names = ["Iwasaki","Nakajima","Imakiire","Kamio","Takemura","Hirono",
     "Yamashita","Aoki","Sekigawa","Mikuni","Yarita","Kubokawa","Hara","Fukumoto",
@@ -24,9 +26,16 @@ hour_dist = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
 order_prob = [0.0405, 0.027, 0.0135, 0.0135, 0.0005, 0.0005, 0.0135, 0.0135,
     0.027, 0.027, 0.0405, 0.054, 0.0675, 0.054, 0.054, 0.0405, 0.0405, 0.054,
     0.0675, 0.0675, 0.081, 0.081, 0.0675, 0.054]
+
+# Case of shop always open
 delivery_prob = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0481,
     0.12025, 0.12025, 0.0481, 0.0034875, 0.0034875, 0.0034875, 0.0034875, 0.0481,
     0.21645, 0.21645, 0.12025, 0.0481, 0.0]
+
+# Shop open at 11:00
+delivery_prob_limited = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.12025, 0.12025, 0.0481, 0.0034875, 0.0034875, 0.0034875, 0.0034875, 0.0481,
+    0.21645, 0.21645, 0.12025, 0.0481, 0.0481]
 
 inp_bounds = [{'lat': 35.55852843647213, 'long': 139.64362022274145},
         {'lat': 35.55876409598856, 'long': 139.64411911361822},
@@ -93,15 +102,25 @@ inp_bounds = [{'lat': 35.55852843647213, 'long': 139.64362022274145},
         {'lat': 35.558408424437864, 'long': 139.643837482}]
 
 area_bounds = [[d['lat'],d['long']] for d in inp_bounds]
-print area_bounds
+# print area_bounds
 
+# Case of a shop always open
+# order_params = {'dist':hour_dist, 'prob':order_prob, 'num':nb_orders,
+#     'max_items':5, 'list':PIZZAS_AVAILABLE}
+# delivery_params = {'dist':hour_dist, 'prob':delivery_prob, 'charge':DELIVERY_CHARGE}
 
-order_params = {'dist':hour_dist, 'prob':order_prob, 'num':nb_orders,
+# Case of a shop with limited opening hours
+order_params = {'dist':hour_dist, 'prob':delivery_prob_limited, 'num':nb_orders,
     'max_items':5, 'list':PIZZAS_AVAILABLE}
-delivery_params = {'dist':hour_dist, 'prob':delivery_prob, 'charge':DELIVERY_CHARGE}
+delivery_params = {'dist':hour_dist, 'prob':delivery_prob_limited, 'charge':DELIVERY_CHARGE}
 
 shop_json = {"name":"Pizza'Bunga","phone":"080-4627-6196","address":"4-31-8 Kizuki, Nakahara-ku, Kawazaki-shi, Kanagawa-ken 211-0025"}
 
+# Probability for the order to not be asap, i.e. for being reserved
+reservation_prob = 0.7
+
+# Probability for the customer to accept to share
+sharing_prob = 0.5
 
 np.random.seed(seed)
 
@@ -118,14 +137,17 @@ def get_json_payload(order):
     return data
 
 generated_orders, generated_positions = generateOrderList(start_date, end_date, customer_names,
-    order_params, delivery_params, area_bounds)
+    order_params, delivery_params, area_bounds, reservation_prob, sharing_prob)
 
 for order in generated_orders:
     #order.compute_order_full_delay()
     json_data = get_json_payload(order)
-    pprint.pprint(json_data)
-    print "----------------------------------------------------------------"
+    output_file.write(str(json_data))
+    output_file.write('\n')
+    # pprint.pprint(json_data)
+    # print "----------------------------------------------------------------"
 
+output_file.close()
 generated_distribution = generatedDists(generated_orders)
 
 def getAxisPoints(source_list):
