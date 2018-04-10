@@ -7,7 +7,7 @@ import io
 import numpy as np
 import matplotlib
 # For online version only
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 ####
@@ -32,7 +32,8 @@ TS_FORMAT = "%Y-%m-%dT%H:%M"
 
 # Shop information
 SHOP_NAME = "Pizza'Bunga"
-SHOP_ADDRESS = "4-31-8 Kizuki, Nakahara-ku, Kawazaki-shi, Kanagawa-ken 211-0025"
+#SHOP_ADDRESS = "4-31-8 Kizuki, Nakahara-ku, Kawazaki-shi, Kanagawa-ken 211-0025"
+SHOP_ADDRESS = "Kizuki 211-0025"
 SHOP_PHONE = "080-4627-6196"
 
 # cooking delay
