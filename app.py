@@ -31,7 +31,7 @@ ORDER_KEY = "order_management.php"
 TS_FORMAT = "%Y-%m-%dT%H:%M"
 
 # Shop information
-SHOP_NAME = "Pizza'Bunga"
+SHOP_NAME = "Pizza Bunga"
 #SHOP_ADDRESS = "4-31-8 Kizuki, Nakahara-ku, Kawazaki-shi, Kanagawa-ken 211-0025"
 SHOP_ADDRESS = "Kizuki 211-0025"
 SHOP_PHONE = "080-4627-6196"
@@ -64,44 +64,46 @@ PIZZAS_AVAILABLE = (
 
 
 def get_delay(delivery_addr):
-    """Send the customer information to the Delivery Management System, and receive delay"""
+    """Send the customer information to the Delivery Management System,
+    and receive delay"""
     delivery_delay = 0
-    order_id = 0
     webpath = DMS_URL + ORDER_KEY
 
-    payload = make_getcmd_json(SHOP_ADDRESS, delivery_addr)
+    payload = make_getcmd_json(delivery_addr)
     #print payload
     websource = requests.get(webpath, json=payload, auth=('yamanaka', 'yamanaka'))
     try:
         response = json.loads(websource.text)
         #print json.dumps(response, sort_keys=True, indent=4, separators=(',', ': '))
         delay = response['duration']
-        oid = response['order_id']
+        oid = int(response['order_id'])
+        sid = int(response['shop_id'])
         if delay is None:
             #print "Not receiving delay information"
             #print "Request = " + str(payload)
             #print "Response = " + str(websource.text)
             #print delay, oid
-            return 0, oid
+            return 0, oid, sid
         else:
             delivery_delay = re.findall('\d+', str(delay))
             #print delay, oid
-            return int(delivery_delay[0]), oid
+            return int(delivery_delay[0]), oid, sid
     except(ValueError, KeyError, TypeError):
         #print "JSON format error"
         #print str(websource.text)
-        return 0, 0
+        return 0, 0, 0
 
-def send_order(order, generation_type):
+def send_order(order, generation_type, sid):
     webpath = DMS_URL + ORDER_KEY
-    payload = get_json_payload(order, generation_type)
+    payload = get_json_payload(order, generation_type, sid)
 
     #print str(json.dumps(payload, sort_keys=True, indent=4, separators=(',', ': ')))
     websource = requests.post(webpath, json=payload, auth=('yamanaka', 'yamanaka'))
     return websource.status_code
 
-def make_getcmd_json(origin_address, destination_address):
-    data = {"information":{"origin":origin_address, "destination":destination_address}}
+def make_getcmd_json(destination_address):
+    sinfo = make_sinfo_json(SHOP_NAME, SHOP_PHONE, SHOP_ADDRESS)
+    data = {"information":{"shop":sinfo, "destination":destination_address}}
     return data
 
 def make_dinfo_json(customer_name, customer_phone, customer_address, customer_message,
@@ -123,8 +125,7 @@ def make_order_json(order_id, generation_type, order_date, order_preparation,
         "keeptime": order_max_keep, "kUnit":"min", "list":order_list, "lType":"pizza"}
     return data
 
-def get_json_payload(order, generation_type):
-    sinfo = make_sinfo_json(SHOP_NAME, SHOP_PHONE, SHOP_ADDRESS)
+def get_json_payload(order, generation_type, sid):
     if order.now:
         date = ""
     else:
@@ -132,7 +133,7 @@ def get_json_payload(order, generation_type):
     dinfo = make_dinfo_json(order.name, order.phone, order.delivery_address,
         order.message, date, order.sharing, order.flexibility)
     oinfo = make_order_json(order.ID, generation_type, order.date.strftime(TS_FORMAT), order.preparation_time, order.max_keep_time, order.items)
-    data = {"information":{"shop":sinfo, "delivery":dinfo, "order":oinfo}}
+    data = {"information":{"shop_id":sid, "delivery":dinfo, "order":oinfo}}
     return data
 
 def format_table_row(l_num, l_sym, l_text, c_num, c_sym, c_text, r_num, r_sym, r_text):
@@ -256,7 +257,7 @@ def signup():
     session['nb_pizza'] = request.form['nb_pizza']
     session['message'] = request.form['message']
     if session['delivery_addr']:
-        session['delivery_delay'], session['order_id'] = get_delay(session['delivery_addr'])
+        session['delivery_delay'], session['order_id'], session['shop_id'] = get_delay(session['delivery_addr'])
         #print session['delivery_delay']
     return redirect(url_for('order_page'))
 
@@ -347,7 +348,7 @@ def message():
                                                    phone=session['customer_phone'],
                                                    message=session['message'])
         else:
-            response_code = send_order(order, "website")
+            response_code = send_order(order, "website", session['shop_id'])
             if(response_code == 200):
 
                 if order.delay == 0:
@@ -380,7 +381,7 @@ def message():
                                                    phone=session['customer_phone'],
                                                    message=session['message'])
         else:
-            response_code = send_order(order, "website")
+            response_code = send_order(order, "website", session['shop_id'])
             #print response_code
             if(response_code == 200):
                 if order.delay == 0:
