@@ -32,8 +32,8 @@ TS_FORMAT = "%Y-%m-%dT%H:%M"
 
 # Shop information
 SHOP_NAME = "Pizza Bunga"
-#SHOP_ADDRESS = "4-31-8 Kizuki, Nakahara-ku, Kawazaki-shi, Kanagawa-ken 211-0025"
-SHOP_ADDRESS = "Kizuki 211-0025"
+SHOP_ADDRESS = "4-31-8 Kizuki, Nakahara-ku, Kawazaki-shi, Kanagawa-ken 211-0025"
+#SHOP_ADDRESS = "Kizuki 211-0025"
 SHOP_PHONE = "080-4627-6196"
 
 # cooking delay
@@ -72,12 +72,14 @@ def get_delay(delivery_addr):
     payload = make_getcmd_json(delivery_addr)
     #print payload
     websource = requests.get(webpath, json=payload, auth=('yamanaka', 'yamanaka'))
+    #print str(websource.text)
     try:
         response = json.loads(websource.text)
         #print json.dumps(response, sort_keys=True, indent=4, separators=(',', ': '))
         delay = response['duration']
         oid = int(response['order_id'])
         sid = int(response['shop_id'])
+
         if delay is None:
             #print "Not receiving delay information"
             #print "Request = " + str(payload)
@@ -258,7 +260,7 @@ def signup():
     session['message'] = request.form['message']
     if session['delivery_addr']:
         session['delivery_delay'], session['order_id'], session['shop_id'] = get_delay(session['delivery_addr'])
-        #print session['delivery_delay']
+        #print session['delivery_addr'], session['delivery_delay'], session['order_id'], session['shop_id']
     return redirect(url_for('order_page'))
 
 @app.route('/order')
